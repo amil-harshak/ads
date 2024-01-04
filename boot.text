@@ -1,0 +1,1026 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+enum color { White, Gray, Black };
+
+typedef struct list_node {
+  int index_of_item;
+  struct list_node *next;
+} list_node;
+
+typedef struct node {
+  int data;
+  enum color colr;
+  int discovery_time;
+  int finish_time;
+  list_node *head;
+} node;
+
+typedef struct graph {
+  int number_of_vertices;
+  node heads[];
+} graph;
+
+node *new_node(int data) {
+  node *z = malloc(sizeof(node));
+  z->data = data;
+  z->head = NULL;
+  z->colr = White;
+  z->discovery_time = 0;
+  z->finish_time = 0;
+  return z;
+}
+
+list_node *new_list_node(int item_index) {
+  list_node *z = malloc(sizeof(list_node));
+  z->index_of_item = item_index;
+  z->next = NULL;
+  return z;
+}
+
+graph *new_graph(int number_of_vertices) {
+  graph *g = malloc(sizeof(graph) + (number_of_vertices * sizeof(node)));
+  g->number_of_vertices = number_of_vertices;
+
+  int i;
+  for (i = 0; i < number_of_vertices; i++) {
+    node *z = new_node(-1);
+    g->heads[i] = *z;
+  }
+
+  return g;
+}
+
+void add_node_to_graph(graph *g, int data) {
+  node *z = new_node(data);
+  int i;
+  for (i = 0; i < g->number_of_vertices; i++) {
+    if (g->heads[i].data < 0) {
+      g->heads[i] = *z;
+      break;
+    }
+  }
+}
+
+int in_graph_head_list(graph *g, int data) {
+  int i;
+  for (i = 0; i < g->number_of_vertices; i++) {
+    if (g->heads[i].data == data)
+      return 1;
+  }
+  return 0;
+}
+
+void add_edge(graph *g, int source, int dest) {
+  if (!in_graph_head_list(g, source)) {
+    add_node_to_graph(g, source);
+  }
+  if (!in_graph_head_list(g, dest)) {
+    add_node_to_graph(g, dest);
+  }
+
+  int i, j;
+  for (i = 0; i < g->number_of_vertices; i++) {
+    if (g->heads[i].data == source) {
+
+      int dest_index;
+      for (j = 0; j < g->number_of_vertices; j++) {
+        if (g->heads[j].data == dest) {
+          dest_index = j;
+          break;
+        }
+      }
+
+      list_node *n = new_list_node(dest_index);
+      if (g->heads[i].head == NULL) {
+        g->heads[i].head = n;
+      } else {
+        list_node *temp;
+        temp = g->heads[i].head;
+
+        while (temp->next != NULL) {
+          temp = temp->next;
+        }
+        temp->next = n;
+      }
+      break;
+    }
+  }
+}
+
+void print_graph(graph *g) {
+  int i;
+  for (i = 0; i < g->number_of_vertices; i++) {
+    list_node *temp;
+    temp = g->heads[i].head;
+    printf("%d\t", g->heads[i].data);
+    while (temp != NULL) {
+      printf("%d\t", g->heads[temp->index_of_item].data);
+      temp = temp->next;
+    }
+    printf("\n");
+  }
+}
+
+typedef struct queue_node {
+  node *n;
+  struct queue_node *next;
+} queue_node;
+
+typedef struct queue {
+  int count;
+  queue_node *front;
+  queue_node *rear;
+} queue;
+
+int is_empty_queue(queue *q) { return !(q->count); }
+
+void enqueue(queue *q, node *n) {
+  queue_node *new_queue_node;
+  new_queue_node = malloc(sizeof(queue_node));
+  new_queue_node->n = n;
+  new_queue_node->next = NULL;
+  if (!is_empty_queue(q)) {
+    q->rear->next = new_queue_node;
+    q->rear = new_queue_node;
+  } else {
+    q->front = q->rear = new_queue_node;
+  }
+  q->count++;
+}
+
+queue_node *dequeue(queue *q) {
+  queue_node *tmp;
+  tmp = q->front;
+  q->front = q->front->next;
+  q->count--;
+  return tmp;
+}
+
+queue *make_queue() {
+  queue *q;
+  q = malloc(sizeof(queue));
+  q->count = 0;
+  q->front = NULL;
+  q->rear = NULL;
+  return q;
+}
+
+void print_queue(queue *q) {
+  queue_node *tmp;
+  tmp = q->front;
+  while (tmp != NULL) {
+    printf("%d\t", tmp->n->data);
+    tmp = tmp->next;
+  }
+  printf("\n");
+}
+
+void bfs(graph *g,int j) {
+  node *s = &g->heads[j];
+  int i;
+  for (i = 0; i < g->number_of_vertices; i++) {
+    g->heads[i].colr = White;
+  }
+  s->colr = Gray;
+
+  queue *q = make_queue();
+  enqueue(q, s);
+
+  while (!is_empty_queue(q)) {
+    queue_node *u = dequeue(q);
+    list_node *temp;
+    temp = u->n->head;
+    while (temp != NULL) {
+      if (g->heads[temp->index_of_item].colr == White) {
+        g->heads[temp->index_of_item].colr = Gray;
+        enqueue(q, &g->heads[temp->index_of_item]);
+      }
+      temp = temp->next;
+    }
+    u->n->colr = Black;
+    printf("%d\n", u->n->data);
+  }
+}
+
+typedef struct Stack {
+  int data;
+  struct Stack *next;
+} Stack;
+
+Stack *createStackNode(int data) {
+  Stack *newNode = malloc(sizeof(Stack));
+  newNode->data = data;
+  newNode->next = NULL;
+  return newNode;
+}
+void dfs_visit(graph *g, node *u, int *time,Stack **dstack,Stack **tstack) {
+  u->colr = Gray;
+  u->discovery_time = ++(*time);
+
+  printf("Node %d discovered at time %d\n", u->data, u->discovery_time);
+Stack *newNode = createStackNode(u->data);
+    newNode->next = *dstack;
+  *dstack = newNode;
+  list_node *temp = u->head;
+  while (temp != NULL) {
+    if (g->heads[temp->index_of_item].colr == White) {
+      dfs_visit(g, &g->heads[temp->index_of_item], time,dstack,tstack);
+    }
+    temp = temp->next;
+  }
+
+  u->colr = Black;
+  u->finish_time = ++(*time);
+  printf("Node %d finished at time %d\n", u->data, u->finish_time);
+  Stack *newNod = createStackNode(u->data);
+  newNod->next = *tstack;
+  *tstack = newNod;
+}
+
+void dfs(graph *g) {
+  int time = 0;
+Stack *dstack = NULL;
+Stack *tstack = NULL;
+  int i;
+    for (i = 0; i < g->number_of_vertices; i++) {
+    g->heads[i].colr = White;
+  }
+  for (i = 0; i < g->number_of_vertices; i++) {
+    if (g->heads[i].colr == White) {
+      dfs_visit(g, &g->heads[i], &time, &dstack,&tstack);
+
+    }
+  }
+  while (dstack != NULL){
+    Stack *temp = dstack;
+    if(dstack->next!=NULL){
+    while(dstack->next->next!=NULL)
+    dstack = dstack->next;
+    printf("%d ", dstack->next->data);
+    Stack *cur=temp;
+    temp=dstack->next;
+    dstack->next=NULL;
+    dstack=cur;
+    }
+    else{
+        printf("%d ", dstack->data);
+        dstack=dstack->next;
+    }
+    free(temp);
+  }
+  printf("\nTopological Sort:\n");
+  while (tstack != NULL) {
+    printf("%d ", tstack->data);
+    Stack *temp = tstack;
+    tstack = tstack->next;
+    free(temp);
+  }
+}
+void bgraph(graph *g) {
+  int i,flag;
+  
+   for (int j = 0; j < g->number_of_vertices; j++){
+       flag =1;
+  for (i = 0; i < g->number_of_vertices; i++) {
+    list_node *temp;
+    temp = g->heads[i].head;
+    while (temp != NULL) {
+      if(g->heads[temp->index_of_item].data==g->heads[j].data){
+      flag=0;
+      }
+      temp = temp->next;
+    }
+    
+  }
+  if(flag==1)
+      bfs(g,j);
+   }
+}
+int main() {
+ int v,v1,v2,e;
+    printf("Enter the number of vertex :");
+    scanf("%d",&v);
+    graph *g = new_graph(v);
+    printf("Enter the number of edges :");
+    scanf("%d",&e);
+    printf("Enter the edges (v1,v2) :");
+    for(int i =0;i<e;i++){
+     scanf("%d",&v1);
+     scanf("%d",&v2);
+       add_edge(g, v1, v2);
+    }
+  
+  printf("Graph Representation:\n");
+  print_graph(g);
+
+  printf("\nBFS Traversal:\n");
+  bgraph(g);
+
+  printf("\nDFS Traversal:\n");
+  dfs(g);
+
+
+  free(g);
+
+  return 0;
+}
+
+
+
+
+
+===========================================================
+
+prims
+
+#include <stdio.h>
+int a,b,u,v,n,i,j,ne=1;
+int visited[10]={0},min,mincost=0,cost[10][10];
+void main()
+{
+printf("\nEnter the number of nodes:");
+scanf("%d",&n);
+printf("\nEnter the adjacency matrix::\n");
+for(i=1;i<=n;i++)
+for(j=1;j<=n;j++)
+{
+scanf("%d",&cost[i][j]);
+if(cost[i][j]==0)
+cost[i][j]=999;
+}
+visited[1]=1;
+printf("\n");
+while(ne<n)
+{
+for(i=1,min=999;i<=n;i++)
+for(j=1;j<=n;j++)
+if(cost[i][j]<min)
+if(visited[i]!=0)
+{
+min=cost[i][j];
+a=u=i;
+b=v=j;
+}
+if(visited[u]==0||visited[v]==0)
+{
+printf("\nEdge %d:(%d %d) cost:%d",ne++,a,b,min);
+mincost+=min;
+visited[b]=1;
+}
+cost[a][b]=cost[b][a]=999;
+}
+printf("\nMinimum cost:%d\n",mincost);
+}
+
+=======================================================================
+
+kruskal
+
+
+#include <stdio.h>
+#include <stdlib.h>
+int i,j,k,a,b,u,v,n,ne=1;
+int min,mincost=0,cost[9][9],parent[9];
+int find(int);
+int uni(int,int);
+void main()
+{
+printf("\nEnter the no. of vertces:");
+scanf("%d",&n);
+printf("\nEnter the cost adjacency matrix:\n");
+for(i=1;i<=n;i++){
+for(j=1;j<=n;j++) {
+scanf("%d",&cost[i][j]);
+if(cost[i][j]==0)
+cost[i][j]=999;
+}}
+printf("The edges of Minimum Cost Sanning Tree are\n");
+while(ne < n){
+for(i=1,min=999;i<=n;i++)
+{
+for(j=1;j <= n;j++)
+{
+if(cost[i][j] < min)
+{
+min=cost[i][j];
+a=u=i;
+b=v=j;
+}}}
+u=find(u);
+v=find(v);
+if(uni(u,v))
+
+
+{
+printf("%d edge (%d,%d) =%d\n",ne++,a,b,min);
+mincost +=min;
+}
+cost[a][b]=cost[b][a]=999;
+}
+printf("\n Minimum cost = %d\n",mincost);
+}
+int find(int i)
+{
+while(parent[i])
+i=parent[i];
+return i;
+}
+int uni(int i,int j)
+{
+if(i!=j)
+{
+parent[j]=i;
+return 1;
+}
+return 0;}
+
+================================================================
+
+strongly
+
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#define MAX_SIZE 5
+struct Graph *graph;
+struct Graph *gr;
+int stack[MAX_SIZE], top;
+struct adj_list_node{
+int dest;
+struct adj_list_node *next;
+};
+struct adj_list{
+struct adj_list_node *head;
+};
+struct Graph{
+int V;
+int *visited;
+struct adj_list *array;
+};
+struct adj_list_node *new_adj_list_node(int dest){
+struct adj_list_node *newNode = (struct adj_list_node *)malloc(sizeof(struct
+adj_list_node));
+newNode->dest = dest;
+newNode->next = NULL;
+return newNode;
+}
+
+
+struct Graph *create_graph(int V){
+struct Graph *graph = (struct Graph *)malloc(sizeof(struct Graph));
+graph->V = V;
+graph->array = (struct adj_list *)malloc(V * sizeof(struct adj_list));
+int i;
+for (i = 0; i < V; ++i)
+graph->array[i].head = NULL;
+return graph;
+}
+void get_transpose(struct Graph *gr, int src, int dest){
+struct adj_list_node *newNode = new_adj_list_node(src);
+newNode->next = gr->array[dest].head;
+gr->array[dest].head = newNode;
+}
+void add_edge(struct Graph *graph, struct Graph *gr, int src, int dest){
+struct adj_list_node *newNode = new_adj_list_node(dest);
+newNode->next = graph->array[src].head;
+graph->array[src].head = newNode;
+get_transpose(gr, src, dest);
+}
+void print_graph(struct Graph *graph1){
+int v;
+for (v = 0; v < graph1->V; ++v){
+struct adj_list_node *temp = graph1->array[v].head;#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#define MAX_SIZE 5
+struct Graph *graph;
+struct Graph *gr;
+int stack[MAX_SIZE], top;
+struct adj_list_node{
+int dest;
+struct adj_list_node *next;
+};
+struct adj_list{
+struct adj_list_node *head;
+};
+struct Graph{
+int V;
+int *visited;
+struct adj_list *array;
+};
+struct adj_list_node *new_adj_list_node(int dest){
+struct adj_list_node *newNode = (struct adj_list_node *)malloc(sizeof(struct
+adj_list_node));
+newNode->dest = dest;
+newNode->next = NULL;
+return newNode;
+}
+
+
+struct Graph *create_graph(int V){
+struct Graph *graph = (struct Graph *)malloc(sizeof(struct Graph));
+graph->V = V;
+graph->array = (struct adj_list *)malloc(V * sizeof(struct adj_list));
+int i;
+for (i = 0; i < V; ++i)
+graph->array[i].head = NULL;
+return graph;
+}
+void get_transpose(struct Graph *gr, int src, int dest){#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#define MAX_SIZE 5
+struct Graph *graph;
+struct Graph *gr;
+int stack[MAX_SIZE], top;
+struct adj_list_node{
+int dest;
+struct adj_list_node *next;
+};
+struct adj_list{
+struct adj_list_node *head;
+};
+struct Graph{
+int V;
+int *visited;
+struct adj_list *array;
+};
+struct adj_list_node *new_adj_list_node(int dest){
+struct adj_list_node *newNode = (struct adj_list_node *)malloc(sizeof(struct
+adj_list_node));
+newNode->dest = dest;
+newNode->next = NULL;
+return newNode;
+}
+
+
+struct Graph *create_graph(int V){
+struct Graph *graph = (struct Graph *)malloc(sizeof(struct Graph));
+graph->V = V;
+graph->array = (struct adj_list *)malloc(V * sizeof(struct adj_list));
+int i;
+for (i = 0; i < V; ++i)#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#define MAX_SIZE 5
+struct Graph *graph;
+struct Graph *gr;
+int stack[MAX_SIZE], top;
+struct adj_list_node{
+int dest;
+struct adj_list_node *next;
+};
+struct adj_list{
+struct adj_list_node *head;
+};
+struct Graph{
+int V;
+int *visited;
+struct adj_list *array;
+};
+struct adj_list_node *new_adj_list_node(int dest){
+struct adj_list_node *newNode = (struct adj_list_node *)malloc(sizeof(struct
+adj_list_node));
+newNode->dest = dest;
+newNode->next = NULL;
+return newNode;
+}
+
+
+struct Graph *create_graph(int V){
+struct Graph *graph = (struct Graph *)malloc(sizeof(struct Graph));
+graph->V = V;
+graph->array = (struct adj_list *)malloc(V * sizeof(struct adj_list));
+int i;
+for (i = 0; i < V; ++i)
+graph->array[i].head = NULL;
+return graph;
+}
+void get_transpose(struct Graph *gr, int src, int dest){
+struct adj_list_node *newNode = new_adj_list_node(src);
+newNode->next = gr->array[dest].head;
+gr->array[dest].head = newNode;
+}
+void add_edge(struct Graph *graph, struct Graph *gr, int src, int dest){
+struct adj_list_node *newNode = new_adj_list_node(dest);
+newNode->next = graph->array[src].head;
+graph->array[src].head = newNode;
+get_transpose(gr, src, dest);
+}
+void print_graph(struct Graph *graph1){
+int v;
+for (v = 0; v < graph1->V; ++v){
+struct adj_list_node *temp = graph1->array[v].head;
+while (temp){
+printf("(%d -> %d)\t", v, temp->dest);
+temp = temp->next;
+}
+}
+}
+void push(int x){
+if (top >= MAX_SIZE-1){
+printf("\n\tSTACK is over flow");
+}
+else{
+top++;
+stack[top] = x;
+}
+}
+void pop(){
+if (top <= -1){
+printf("\n\t Stack is under flow");
+}
+else{
+top-- ;
+
+
+}
+}
+void set_fill_order(struct Graph *graph, int v, bool visited[], int *stack){
+visited[v] = true;
+int i = 0;
+struct adj_list_node *temp = graph->array[v].head;
+while (temp){
+if (!visited[temp->dest]){
+set_fill_order(graph, temp->dest, visited, stack);
+}
+temp = temp->next;
+}
+push(v);
+}
+void dfs_recursive(struct Graph *gr, int v, bool visited[]){
+visited[v] = true;
+printf("%d ", v);
+struct adj_list_node *temp = gr->array[v].head;
+while (temp){
+if (!visited[temp->dest])
+dfs_recursive(gr, temp->dest, visited);
+temp = temp->next;
+}
+}
+void strongly_connected_components(struct Graph *graph, struct Graph *gr, int V){
+bool visited[V];
+for (int i = 0; i < V; i++)
+visited[i] = false;
+for (int i = 0; i < V; i++){
+if (visited[i] == false){
+set_fill_order(graph, i, visited, stack);
+}
+}
+int count = 1;
+for (int i = 0; i < V; i++)
+visited[i] = false;
+while (top != -1){
+int v = stack[top];
+pop();
+if (visited[v] == false){
+printf("Strongly connected component %d: \n", count++);
+dfs_recursive(gr, v, visited);
+printf("\n");
+}
+}
+}
+int main(){
+int v,max_edges,i,origin,destin;
+
+
+top = -1;
+printf("\n Enter the number of vertices: ");
+scanf("%d",&v);
+struct Graph *graph = create_graph(v);
+struct Graph *gr = create_graph(v);
+max_edges = v * (v - 1);
+for (i = 0; i <=max_edges; i++) {
+printf("Enter edge %d( 0 0 ) to quit : ", i);
+scanf("%d %d", &origin, &destin) ;
+if ((origin == 0) && (destin == 0))
+break;
+if (origin > v || destin > v || origin < 0 || destin < 0) {
+printf("Invalid edge!\n");
+i--;
+}
+else
+add_edge(graph, gr, origin, destin);
+}
+strongly_connected_components(graph, gr, v);
+return 0;
+}
+graph->array[i].head = NULL;
+return graph;
+}
+void get_transpose(struct Graph *gr, int src, int dest){
+struct adj_list_node *newNode = new_adj_list_node(src);
+newNode->next = gr->array[dest].head;
+gr->array[dest].head = newNode;
+}
+void add_edge(struct Graph *graph, struct Graph *gr, int src, int dest){
+struct adj_list_node *newNode = new_adj_list_node(dest);
+newNode->next = graph->array[src].head;
+graph->array[src].head = newNode;
+get_transpose(gr, src, dest);
+}
+void print_graph(struct Graph *graph1){
+int v;
+for (v = 0; v < graph1->V; ++v){
+struct adj_list_node *temp = graph1->array[v].head;
+while (temp){
+printf("(%d -> %d)\t", v, temp->dest);
+temp = temp->next;
+}
+}
+}
+void push(int x){
+if (top >= MAX_SIZE-1){
+printf("\n\tSTACK is over flow");
+}
+else{
+top++;
+stack[top] = x;
+}
+}
+void pop(){
+if (top <= -1){
+printf("\n\t Stack is under flow");
+}
+else{
+top-- ;
+
+
+}
+}
+void set_fill_order(struct Graph *graph, int v, bool visited[], int *stack){
+visited[v] = true;
+int i = 0;
+struct adj_list_node *temp = graph->array[v].head;
+while (temp){
+if (!visited[temp->dest]){
+set_fill_order(graph, temp->dest, visited, stack);
+}
+temp = temp->next;
+}
+push(v);
+}
+void dfs_recursive(struct Graph *gr, int v, bool visited[]){
+visited[v] = true;
+printf("%d ", v);
+struct adj_list_node *temp = gr->array[v].head;
+while (temp){
+if (!visited[temp->dest])
+dfs_recursive(gr, temp->dest, visited);
+temp = temp->next;
+}
+}
+void strongly_connected_components(struct Graph *graph, struct Graph *gr, int V){
+bool visited[V];
+for (int i = 0; i < V; i++)
+visited[i] = false;
+for (int i = 0; i < V; i++){
+if (visited[i] == false){
+set_fill_order(graph, i, visited, stack);
+}
+}
+int count = 1;
+for (int i = 0; i < V; i++)
+visited[i] = false;
+while (top != -1){
+int v = stack[top];
+pop();
+if (visited[v] == false){
+printf("Strongly connected component %d: \n", count++);
+dfs_recursive(gr, v, visited);
+printf("\n");
+}
+}
+}
+int main(){
+int v,max_edges,i,origin,destin;
+
+
+top = -1;
+printf("\n Enter the number of vertices: ");
+scanf("%d",&v);
+struct Graph *graph = create_graph(v);
+struct Graph *gr = create_graph(v);
+max_edges = v * (v - 1);
+for (i = 0; i <=max_edges; i++) {
+printf("Enter edge %d( 0 0 ) to quit : ", i);
+scanf("%d %d", &origin, &destin) ;
+if ((origin == 0) && (destin == 0))
+break;
+if (origin > v || destin > v || origin < 0 || destin < 0) {
+printf("Invalid edge!\n");
+i--;
+}
+else
+add_edge(graph, gr, origin, destin);
+}
+strongly_connected_components(graph, gr, v);
+return 0;
+}
+struct adj_list_node *newNode = new_adj_list_node(src);
+newNode->next = gr->array[dest].head;
+gr->array[dest].head = newNode;
+}
+void add_edge(struct Graph *graph, struct Graph *gr, int src, int dest){
+struct adj_list_node *newNode = new_adj_list_node(dest);
+newNode->next = graph->array[src].head;
+graph->array[src].head = newNode;
+get_transpose(gr, src, dest);
+}
+void print_graph(struct Graph *graph1){
+int v;
+for (v = 0; v < graph1->V; ++v){
+struct adj_list_node *temp = graph1->array[v].head;
+while (temp){
+printf("(%d -> %d)\t", v, temp->dest);
+temp = temp->next;
+}
+}
+}
+void push(int x){
+if (top >= MAX_SIZE-1){
+printf("\n\tSTACK is over flow");
+}
+else{
+top++;
+stack[top] = x;
+}
+}
+void pop(){
+if (top <= -1){
+printf("\n\t Stack is under flow");
+}
+else{
+top-- ;
+
+
+}
+}
+void set_fill_order(struct Graph *graph, int v, bool visited[], int *stack){
+visited[v] = true;
+int i = 0;
+struct adj_list_node *temp = graph->array[v].head;
+while (temp){
+if (!visited[temp->dest]){
+set_fill_order(graph, temp->dest, visited, stack);
+}
+temp = temp->next;
+}
+push(v);
+}
+void dfs_recursive(struct Graph *gr, int v, bool visited[]){
+visited[v] = true;
+printf("%d ", v);
+struct adj_list_node *temp = gr->array[v].head;
+while (temp){
+if (!visited[temp->dest])
+dfs_recursive(gr, temp->dest, visited);
+temp = temp->next;
+}
+}
+void strongly_connected_components(struct Graph *graph, struct Graph *gr, int V){
+bool visited[V];
+for (int i = 0; i < V; i++)
+visited[i] = false;
+for (int i = 0; i < V; i++){
+if (visited[i] == false){
+set_fill_order(graph, i, visited, stack);
+}
+}
+int count = 1;
+for (int i = 0; i < V; i++)
+visited[i] = false;
+while (top != -1){
+int v = stack[top];
+pop();
+if (visited[v] == false){
+printf("Strongly connected component %d: \n", count++);
+dfs_recursive(gr, v, visited);
+printf("\n");
+}
+}
+}
+int main(){
+int v,max_edges,i,origin,destin;
+
+
+top = -1;
+printf("\n Enter the number of vertices: ");
+scanf("%d",&v);
+struct Graph *graph = create_graph(v);
+struct Graph *gr = create_graph(v);
+max_edges = v * (v - 1);
+for (i = 0; i <=max_edges; i++) {
+printf("Enter edge %d( 0 0 ) to quit : ", i);
+scanf("%d %d", &origin, &destin) ;
+if ((origin == 0) && (destin == 0))
+break;
+if (origin > v || destin > v || origin < 0 || destin < 0) {
+printf("Invalid edge!\n");
+i--;
+}
+else
+add_edge(graph, gr, origin, destin);
+}
+strongly_connected_components(graph, gr, v);
+return 0;
+}
+while (temp){
+printf("(%d -> %d)\t", v, temp->dest);
+temp = temp->next;
+}
+}
+}
+void push(int x){
+if (top >= MAX_SIZE-1){
+printf("\n\tSTACK is over flow");
+}
+else{
+top++;
+stack[top] = x;
+}
+}
+void pop(){
+if (top <= -1){
+printf("\n\t Stack is under flow");
+}
+else{
+top-- ;
+
+
+}
+}
+void set_fill_order(struct Graph *graph, int v, bool visited[], int *stack){
+visited[v] = true;
+int i = 0;
+struct adj_list_node *temp = graph->array[v].head;
+while (temp){
+if (!visited[temp->dest]){
+set_fill_order(graph, temp->dest, visited, stack);
+}
+temp = temp->next;
+}
+push(v);
+}
+void dfs_recursive(struct Graph *gr, int v, bool visited[]){
+visited[v] = true;
+printf("%d ", v);
+struct adj_list_node *temp = gr->array[v].head;
+while (temp){
+if (!visited[temp->dest])
+dfs_recursive(gr, temp->dest, visited);
+temp = temp->next;
+}
+}
+void strongly_connected_components(struct Graph *graph, struct Graph *gr, int V){
+bool visited[V];
+for (int i = 0; i < V; i++)
+visited[i] = false;
+for (int i = 0; i < V; i++){
+if (visited[i] == false){
+set_fill_order(graph, i, visited, stack);
+}
+}
+int count = 1;
+for (int i = 0; i < V; i++)
+visited[i] = false;
+while (top != -1){
+int v = stack[top];
+pop();
+if (visited[v] == false){
+printf("Strongly connected component %d: \n", count++);
+dfs_recursive(gr, v, visited);
+printf("\n");
+}
+}
+}
+int main(){
+int v,max_edges,i,origin,destin;
+
+
+top = -1;
+printf("\n Enter the number of vertices: ");
+scanf("%d",&v);
+struct Graph *graph = create_graph(v);
+struct Graph *gr = create_graph(v);
+max_edges = v * (v - 1);
+for (i = 0; i <=max_edges; i++) {
+printf("Enter edge %d( 0 0 ) to quit : ", i);
+scanf("%d %d", &origin, &destin) ;
+if ((origin == 0) && (destin == 0))
+break;
+if (origin > v || destin > v || origin < 0 || destin < 0) {
+printf("Invalid edge!\n");
+i--;
+}
+else
+add_edge(graph, gr, origin, destin);
+}
+strongly_connected_components(graph, gr, v);
+return 0;
+}
+
+
